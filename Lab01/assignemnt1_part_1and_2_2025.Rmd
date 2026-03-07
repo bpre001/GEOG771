@@ -1,0 +1,106 @@
+
+---
+title: "Spatial Analysis and Geocomputation"
+author: "Benjamin Preston 9029520"
+date: "March 9, 2026"
+output: html_document
+---
+
+
+
+## Assignemnt 1
+
+Create an Rmarkdown document with a front page in which you answer questions and  respond to the set up tasks from Part 1 and Part 2. Make sure that the code and the results are all plotted and formatted appropriately. 
+
+Data for Part 1 and Part 2 of this assignment will be available to download from canvas. The datasets for Part 1 come from the same folder as the data for the tutorials from Week 1.  
+
+### Part 1:
+
+1. Make 3 histograms for data and variables of your choice. Make sure the graphs have titles, are of different colours and have the axis labeled. For the same variables chosen to look at the distributions provide some descriptive statistics. Put the code, results and the exported graphs into an Rmarkdown document.
+
+2. Read in the csv or the RData version of the dataset Deprivation_Scotland_2011DZ_complete.
+How many observations and variables are in the dataset, what variables are included in the dataset and how
+are they coded (types of variables)? Incorporate the code and the responses in your rmarkdown.
+
+3.  In Deprivation_Scotland_2011DZ_complete the variables no_qual_M_25_64, no_qual_F_25_64 and no_qual_T_25_64 give the number of men, women and total population aged 25-64 with no educational qualifications. Calculate the percent of men, women and total population in that age range with no qualifications. Use the variables
+all_M_25_64, all_F_25_64 and all_T_25_64 as denominators. How many datazones (spatial  administrative unit in Scotland) have over 20% of people aged 25-64 with no qualifications?
+
+4. Summarize the variable UR8FOLD. What type is this variable? Create an ordered
+factor variable of the 8-fold urban-rural classification. The description of the categories is in the file
+SGUR2011_2012_UR8FOLD_CodeDesc.txt. Try to use short but descriptive variable labels. To learn more about UR8FOLD (2016 Urban Rural Classification. Classification identifying urban and rural areas based on settlement size and drive times) go to https://www.gov.scot/publications/scottish-government-urban-rural-classification-2016/pages/6/ . 
+
+5. Create a three category variable from the 8-fold urban-rural classification that groups
+datazones into accessible areas (including urban areas), remote areas and very remote areas.
+
+
+
+### Part 2:
+
+Data for Part 2 of assignment will be available to download from canvas. (Data assignment Part 2). You can make all the maps using __tmap__, or use a mix of different packages. The choice is yours.
+
+
+### 1. Make a population density map of the world. 
+
+-   use library __library(sf)__ to load _COUNTRIES_ALL_ shapefile as _Countries_ (you can name this dataset as you wish).
+
+-   some of the rows in the dataset have NA values - in order to delete them make a subset of _Countries_ with rows where Pop2015 is higher than 0 (or eliminate rows with NA values).
+
+```{r,eval=FALSE}
+Countries2<-subset(Countries,Countries$POP2015>0)
+```
+
+- you do not have a variable _Population density 2015_ in the _COuntries_ or _Countries2_ datasets. You need to create it by adding a new variable __POP_DENS__. Population density equals a total number of people divided by squared area _POP2015/SQKM_.
+
+- create a choropleth map showing population density in the countries of the world.
+
+- use 7 classes to visualise your population density into classes.
+
+-  look at the "classInt" or "tmap" tm_scale_intervals documentation in order to identify the best classification method. The best will be the one which shows your pattern in the clearest way.
+
+- you can use __RColorBrewer library__ in order to identify the scheme of colours of your choice or tmap brewer choices.
+
+
+
+### 2. Make a map of China with Chinese big cities
+
+- make a subset of dataset _Countries_ where you choose only one county - China
+ 
+```{r, eval=FALSE}
+China<-subset(Countries,Countries$CNTRY_NAME=="China")
+```
+- use library __library(sf)__ to load __cities__ file. You can name it _cities_
+- in order to choose only Chinese cities  you can use __raster library__ and "intersect" command. You can also use __st_intersecting__ as we did in the tutorials.
+
+- Name the new  dataset _Chinese_cities_
+
+- plot a map of China with a background colour of your choice
+
+- plot Chinese cities on the top map of China.You can decide what colour and size the symbols will be. Make sure they are visible on your final map.
+
+- add labels to the cities. Use _CITY_NAME_ variable for this purpose.
+
+- add legend and a title to your map
+
+
+### 3. Make a map using __"tmap" library__
+
+- make a map of population density of the world with plotted proportional symbols of the world's cities population from 2015.
+
+- to make this map you can follow the example from the lab
+
+- choose quantile  classification and create 6 classes for _POP_
+
+- using tm_bubbles create proportional symbols from a variable _POPULATION_ from your _cities_ dataset
+
+- add title and legends for both datasets
+
+- make sure your code, comments and the resulting  maps are visible in the document.  
+
+
+## Instructions for the assignment submission
+
+- Submit one documenet (Rmd knitted as ktml or pdf) with all the responses to tasks from Part 1 and Part 2. Make sure you do it in Rmarkdown. 
+
+- Save (knit) your document as a pdf/html and submit via Canvas. 
+
+- Part 1 and 2 are equally important. The rubric for this assignmet is available in Modules. 

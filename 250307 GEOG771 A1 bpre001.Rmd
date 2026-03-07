@@ -1,0 +1,288 @@
+---
+title: "GEOG771 Assignment 1"
+author: "Benjamin Preston"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(sf)
+library(tmap)
+library(raster)
+library(ggrepel)
+
+```
+
+# Part 1 
+
+## Q1. 
+Make 3 histograms for data and variables of your choice. Make sure the graphs have titles, are of different colours and have the axis labeled. For the same variables chosen to look at the distributions provide some descriptive statistics. Put the code, results and the exported graphs into an Rmarkdown document.
+
+```{r message=FALSE, warning=FALSE}
+
+census_small <- read_csv("Lab01/data/census_small.csv")
+glimpse(census_small)
+
+census_small %>%
+  ggplot(aes(x = PCT_Good_Health)) +
+  geom_histogram(fill = "blue",
+                 color = "blue",
+                 alpha = 0.2,
+                 binwidth = 5) +
+  labs(title = "Small Census - Percentage in Good Health", 
+       x = "PCT_Good_Health (%)", 
+       y = "Number of Boroughs (n)")
+
+# Summary Stats for PCT_Good_Health
+census_small %>%
+  summarise(mean = mean(PCT_Good_Health, na.rm = TRUE),
+            median = median(PCT_Good_Health, na.rm = TRUE),
+            sd = sd(PCT_Good_Health, na.rm = TRUE),
+            min = min(PCT_Good_Health, na.rm = TRUE),
+            max = max(PCT_Good_Health, na.rm = TRUE),
+            n = n()
+            )
+
+```
+
+## Q2.
+Read in the csv or the RData version of the dataset Deprivation_Scotland_2011DZ_complete.
+How many observations and variables are in the dataset, what variables are included in the dataset and how
+are they coded (types of variables)? Incorporate the code and the responses in your rmarkdown.
+
+```{r}
+
+dep_data <- read_csv("Lab01/data/Deprivation_Scotland_2011DZ_complete.csv")
+
+```
+
+There are 6500 observations and 92 variables in the dataset. 12 of the variables are character variables, 80 are numeric (double) variables. The variables include demographic information, deprivation indices, and urban-rural classifications for datazones in Scotland.
+
+## Q3.
+In Deprivation_Scotland_2011DZ_complete the variables no_qual_M_25_64, no_qual_F_25_64 and no_qual_T_25_64 give the number of men, women and total population aged 25-64 with no educational qualifications. Calculate the percent of men, women and total population in that age range with no qualifications. Use the variables
+all_M_25_64, all_F_25_64 and all_T_25_64 as denominators. How many datazones (spatial  administrative unit in Scotland) have over 20% of people aged 25-64 with no qualifications?
+
+```{r}
+
+dep_data <- dep_data %>%
+  mutate(pct_no_qual_M_25_64 = (no_qual_M_25_64 / all_M_25_64) * 100,
+         pct_no_qual_F_25_64 = (no_qual_F_25_64 / all_F_25_64) * 100,
+         pct_no_qual_T_25_64 = (no_qual_T_25_64 / all_T_25_64) * 100)
+
+datazones_over_20pct <- dep_data %>% 
+  filter(pct_no_qual_T_25_64 > 20) %>%
+  nrow() %>%  print()
+
+```
+
+There are `r datazones_over_20pct` datazones in Scotland where over 20% of people aged 25-64 have no educational qualifications.  That is ~`r round((datazones_over_20pct / nrow(dep_data)) * 100, 0)`% of the `r nrow(dep_data)` datazones in the dataset.
+
+## Q4. 
+
+Summarize the variable UR8FOLD. What type is this variable? Create an ordered
+factor variable of the 8-fold urban-rural classification. The description of the categories is in the file SGUR2011_2012_UR8FOLD_CodeDesc.txt. Try to use short but descriptive variable labels. To learn more about UR8FOLD (2016 Urban Rural Classification. Classification identifying urban and rural areas based on settlement size and drive times) go to https://www.gov.scot/publications/scottish-government-urban-rural-classification-2016/pages/6. 
+
+```{r}
+
+dep_data <- dep_data %>%
+  mutate(UR8FOLD_factor = factor(UR8FOLD, 
+                                 levels = 1:8, 
+                                 labels = c("Large Urban",
+                                            "Other Urban",
+                                            "Accessible Small Town",
+                                            "Remote Small Town",
+                                            "Accessible Rural",
+                                            "Remote Rural",
+                                            "Very Remote Rural",
+                                            "Island"
+                                            )
+                                 )
+         )
+
+dep_data %>%
+  count(UR8FOLD_factor) %>%
+  bind_rows(summarise(., UR8FOLD_factor = "Total", n = sum(n)))
+
+
+```
+
+## Q5.
+Create a 3-fold urban-rural classification (from the 8-fold) that groups
+datazones into accessible areas (including urban areas), remote areas and very remote areas.
+
+```{r}
+dep_data <- dep_data %>%
+  mutate(UR3FOLD_factor = case_when(
+                      UR8FOLD_factor %in% c("Large Urban", 
+                          "Other Urban", 
+                          "Accessible Rural",
+                          "Accessible Small Town") ~ "Accessible",
+                      UR8FOLD_factor %in% c("Remote Small Town", 
+                          "Remote Rural") ~ "Remote",
+                      UR8FOLD_factor %in% c("Very Remote Rural", 
+                          "Island") ~ "Very Remote",
+                      TRUE ~ NA_character_
+                      )
+  )
+
+dep_data %>%
+  count(UR3FOLD_factor) %>%
+  bind_rows(summarise(., UR3FOLD_factor = "Total", n = sum(n)))
+
+```
+
+# Part 2
+
+Data for Part 2 of assignment will be available to download from canvas. You can make all the maps using __tmap__, or use a mix of different packages. The choice is yours.
+
+## Q1. 
+### Make a population density map of the world. 
+
+-   use library __library(sf)__ to load _COUNTRIES_ALL_ shapefile as _Countries_ (you can name this dataset as you wish).
+
+-   some of the rows in the dataset have NA values - in order to delete them make a subset of _Countries_ with rows where Pop2015 is higher than 0 (or eliminate rows with NA values).
+
+- you do not have a variable _Population density 2015_ in the _Countries_ or _Countries2_ datasets. You need to create it by adding a new variable __POP_DENS__. Population density equals a total number of people divided by squared area _POP2015/SQKM_.
+
+- create a choropleth map showing population density in the countries of the world.
+
+- use 7 classes to visualise your population density into classes.
+
+-  look at the "classInt" or "tmap" tm_scale_intervals documentation in order to identify the best classification method. The best will be the one which shows your pattern in the clearest way.
+
+- you can use __RColorBrewer library__ in order to identify the scheme of colours of your choice or tmap brewer choices.
+
+
+```{r}
+
+Countries <- st_read("Lab01/Data_assignment/COUNTRIES_ALL.shp")
+
+Countries <- Countries %>%
+  filter(POP2015 > 0) %>%
+  mutate(POP_DENS = POP2015 / SQKM,
+         LOG2_POP_DENS = log2(POP_DENS),
+         LOG2_POP_DENS_CLASS = cut(LOG2_POP_DENS, 
+                                   breaks = 7,
+                                   na.rm = TRUE,
+                                   labels = c("Very Low", 
+                                              "Low", 
+                                              "Low-Med", 
+                                              "Med", 
+                                              "Med-High", 
+                                              "High", 
+                                              "Very High"),
+                                   include.lowest = TRUE
+         )
+  )
+         
+# Plot with classified fill
+Countries %>% ggplot() +
+  geom_sf(aes(fill = LOG2_POP_DENS_CLASS), colour = "white", linewidth = 0.1) +
+  scale_fill_brewer(
+    palette = "Blues",
+    name = "Population Density",
+    na.value = "grey80"
+  ) +
+  labs(
+    title = "World Population Density",
+    subtitle = "People per square kilometre (7 classes)",
+    caption = "Source: COUNTRIES_ALL shapefile"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, colour = "grey40"),
+    plot.caption = element_text(size = 8, colour = "grey60"),
+    legend.position = "right",
+    legend.title = element_text(size = 9),
+    legend.text = element_text(size = 8)
+  )
+
+```
+
+Note that I have used a log2 transformation of population density to better visualize the wide range of values across countries. The classes are based on the log-transformed population density, which helps to show population densities more clearly.  I have not used the __classInt__ package for classification, but instead used the base R __cut()__ function to create 7 classes.
+
+## Q2. 
+### Make a map of China with Chinese big cities
+
+- make a subset of dataset _Countries_ where you choose only one county - China
+
+- use library __library(sf)__ to load __cities__ file. You can name it _cities_
+
+- in order to choose only Chinese cities  you can use __raster library__ and "intersect" command. You can also use __st_intersecting__ as we did in the tutorials.
+
+- Name the new  dataset _chinese_cities_
+
+```{r}
+
+cities <- st_read("Lab01/Data_assignment/cities.shp")
+
+# Make sure both layers use the same CRS
+cities <- st_transform(cities, st_crs(Countries))
+
+# Filter to Chinese cities using st_intersects
+china <- Countries %>% filter(CNTRY_NAME == "China")
+
+# Get cities that intersect with China
+chinese_cities <- cities[st_intersects(cities, china, sparse = FALSE), ]
+
+# Verify results
+glimpse(chinese_cities)
+
+```
+
+
+- plot a map of China with a background colour of your choice
+
+- plot Chinese cities on the top map of China.You can decide what colour and size the symbols will be. Make sure they are visible on your final map.
+
+- add labels to the cities. Use _CITY_NAME_ variable for this purpose.
+
+- add legend and a title to your map
+
+```{r}
+
+# Add coordinates for ggrepel
+chinese_cities_coords <- chinese_cities %>%
+  mutate(lon = st_coordinates(.)[,1],
+         lat = st_coordinates(.)[,2])
+
+# Create plot
+ggplot() +
+  # Set sea/background colour
+  theme(panel.background = element_rect(fill = "#ACD8E5")) +
+  
+  # Plot China polygon
+  geom_sf(data = china, fill = "#90C97E", colour = "white", linewidth = 0.3) +
+  
+  # Plot Chinese cities
+  geom_sf(data = chinese_cities, colour = "red", size = 1, alpha = 0.7) +
+  
+  # Add labels for cities
+  geom_text_repel(data = chinese_cities_coords,
+                aes(x = lon, y = lat, label = CITY_NAME),
+                size = 2.5,
+                colour = "black",
+                max.overlaps = 20) +
+  
+  # Add other labels and title
+  labs(
+    title = "Cities of China",
+    caption = "Source: COUNTRIES_ALL & cities shapefiles"
+  ) +
+  theme_void() +
+  theme(
+    panel.background = element_rect(fill = "#ACD8E5"),  # sea blue background
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    plot.caption = element_text(size = 8, colour = "grey60"),
+    plot.background = element_rect(fill = "#ACD8E5", colour = NA)
+  )
+
+```
+
+
+
+
