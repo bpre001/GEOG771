@@ -1,0 +1,81 @@
+---
+title: "Spatial Data Manipulation in R"
+author: "Benjamin Preston"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(sf)
+library(sp)
+```
+
+## Load Simple Feature
+
+```{r}
+
+SF <- st_read("Lab01/data", layer = "tl_2010_06075_tract10")
+
+```
+
+## Convert to Spatial Feature
+
+```{r}
+
+SF_1 <- as(SF, "Spatial")
+SF_2 <- as(SF_1, "sf")
+
+```
+
+## Plotting
+
+```{r}
+
+plot(SF) ## don't do this as plots map for every variable
+plot(SF["ALAND10"]) ## plot just the land area variable
+plot(st_geometry(SF)) ## plot just the geometry
+
+tail(SF)
+head(SF_1)
+slotNames(SF_1) ## shows the slots of the spatial object
+
+
+plot(st_geometry(SF[SF$GEOID10 != "06075980401",])) ## plots removing the offshore islands
+
+```
+
+## Grabbing 311 data
+
+```{r}
+
+data_311 <- read.csv("Lab01/data/311.csv")
+head(data_311)
+sewer_issues <- subset(data_311, data_311$Category == "Sewer Issues")
+st_sewer_issues <- st_as_sf(sewer_issues, coords = c("Lon","Lat"),crs=4269)
+
+plot(st_geometry(SF[SF$GEOID10 != "06075980401",])) ## plots removing the offshore islands
+points(st_geometry(st_sewer_issues), main = "311 Sewer Issues in San Francisco", pch = 16, col = "red", cex = 0.5)
+
+```
+
+## Clipping Spatial Data
+
+```{r}
+
+# Read Shapefile using sf package
+#San Francisco data
+SF2 = st_read("Lab01/data/tl_2010_06075_tract10.shp")
+
+#Coast data
+coast <- st_read("Lab01/data/cb_2015_us_county_500k.shp")
+#look at the data
+coast
+
+plot(st_geometry(SF2), main = "San Francisco Tracts")
+
+plot(st_geometry(coast), main = "Coastline")
+
+
+```
+
